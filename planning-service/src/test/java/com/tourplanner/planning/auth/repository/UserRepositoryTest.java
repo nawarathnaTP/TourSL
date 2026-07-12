@@ -1,0 +1,83 @@
+package com.tourplanner.planning.auth.repository;
+
+import com.tourplanner.planning.auth.entity.Role;
+import com.tourplanner.planning.auth.entity.User;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
+
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+class UserRepositoryTest {
+
+	@Autowired
+	private UserRepository userRepository;
+
+	private User savedUser;
+
+	@BeforeEach
+	void setUp() {
+		userRepository.deleteAll();
+		savedUser = userRepository.save(User.builder()
+				.firstName("John")
+				.lastName("Doe")
+				.email("john@example.com")
+				.role(Role.TOURIST)
+				.build());
+	}
+
+	@Test
+	void findByEmail_existingEmail_returnsUser() {
+		Optional<User> found = userRepository.findByEmail("john@example.com");
+
+		assertThat(found).isPresent();
+		assertThat(found.get().getFirstName()).isEqualTo("John");
+		assertThat(found.get().getLastName()).isEqualTo("Doe");
+		assertThat(found.get().getRole()).isEqualTo(Role.TOURIST);
+	}
+
+	@Test
+	void findByEmail_nonExistingEmail_returnsEmpty() {
+		Optional<User> found = userRepository.findByEmail("nobody@example.com");
+
+		assertThat(found).isEmpty();
+	}
+
+	@Test
+	void existsByEmail_existingEmail_returnsTrue() {
+		assertThat(userRepository.existsByEmail("john@example.com")).isTrue();
+	}
+
+	@Test
+	void existsByEmail_nonExistingEmail_returnsFalse() {
+		assertThat(userRepository.existsByEmail("nobody@example.com")).isFalse();
+	}
+
+	@Test
+	void save_setsCreatedAtAndUpdatedAt() {
+		assertThat(savedUser.getId()).isNotNull();
+		assertThat(savedUser.getCreatedAt()).isNotNull();
+		assertThat(savedUser.getUpdatedAt()).isNotNull();
+	}
+
+	@Test
+	void save_guideRole_persistsCorrectly() {
+		User guide = userRepository.save(User.builder()
+				.firstName("Kamal")
+				.lastName("Perera")
+				.email("kamal@example.com")
+				.role(Role.GUIDE)
+				.build());
+
+		Optional<User> found = userRepository.findByEmail("kamal@example.com");
+
+		assertThat(found).isPresent();
+		assertThat(found.get().getRole()).isEqualTo(Role.GUIDE);
+	}
+}
