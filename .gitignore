@@ -1,2 +1,7 @@
 .env
-deployment.md
+deployment_notes.md
+planning-service-task-def.json
+route-engine-task-def.json
+recommendation-engine-task-def.json
+Deployment.md
+frontend-task-def.json
