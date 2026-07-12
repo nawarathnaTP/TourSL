@@ -189,6 +189,7 @@ public class AuthServiceImpl implements AuthService {
 	private AuthResponse buildAuthResponse(User user) {
 		String role = user.getRole().name();
 		return AuthResponse.builder()
+				.userId(user.getId())
 				.accessToken(jwtUtil.generateAccessToken(user.getEmail(), role))
 				.refreshToken(jwtUtil.generateRefreshToken(user.getEmail(), role))
 				.email(user.getEmail())

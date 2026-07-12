@@ -56,6 +56,7 @@ services:
 
   # ── Backend Services ───────────────────────────────────────
   planning-service:
+    image: toursl/planning-service
     build: ./planning-service
     env_file:
       - ./planning-service/.env
@@ -70,6 +71,7 @@ services:
       - toursl-network
 
   recommendation-engine:
+    image: toursl/recommendation-engine
     build: ./recommendation-engine
     env_file:
       - ./recommendation-engine/.env
@@ -84,6 +86,7 @@ services:
       - toursl-network
 
   route-engine:
+    image: toursl/route-engine
     build: ./route-engine
     env_file:
       - ./route-engine/.env
@@ -99,6 +102,7 @@ services:
 
   # ── Frontend ───────────────────────────────────────────────
   frontend:
+    image: toursl/frontend
     build: ./frontend
     ports:
       - "80:80"
