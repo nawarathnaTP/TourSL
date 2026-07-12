@@ -11,10 +11,11 @@ services:
     volumes:
       - planning_db_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d planning_db"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d planning_db && PGPASSWORD=${DB_PASSWORD} psql -U ${DB_USER} -d planning_db -c 'SELECT 1'"]
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 10s
     networks:
       - toursl-network
 
@@ -29,10 +30,11 @@ services:
     volumes:
       - recommendation_db_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d recommendation_db"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d recommendation_db && PGPASSWORD=${DB_PASSWORD} psql -U ${DB_USER} -d recommendation_db -c 'SELECT 1'"]
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 10s
     networks:
       - toursl-network
 
@@ -47,10 +49,11 @@ services:
     volumes:
       - route_db_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d route_db"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d route_db && PGPASSWORD=${DB_PASSWORD} psql -U ${DB_USER} -d route_db -c 'SELECT 1'"]
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 10s
     networks:
       - toursl-network
 
