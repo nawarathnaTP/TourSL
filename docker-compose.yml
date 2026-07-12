@@ -1,0 +1,119 @@
+services:
+  # ── Databases ──────────────────────────────────────────────
+  planning-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: planning_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - planning_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d planning_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - toursl-network
+
+  recommendation-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: recommendation_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - recommendation_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d recommendation_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - toursl-network
+
+  route-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: route_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - route_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d route_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - toursl-network
+
+  # ── Backend Services ───────────────────────────────────────
+  planning-service:
+    build: ./planning-service
+    env_file:
+      - ./planning-service/.env
+    environment:
+      DB_URL: jdbc:postgresql://planning-db:5432/planning_db
+    ports:
+      - "8001:8001"
+    depends_on:
+      planning-db:
+        condition: service_healthy
+    networks:
+      - toursl-network
+
+  recommendation-engine:
+    build: ./recommendation-engine
+    env_file:
+      - ./recommendation-engine/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@recommendation-db:5432/recommendation_db
+    ports:
+      - "8000:8000"
+    depends_on:
+      recommendation-db:
+        condition: service_healthy
+    networks:
+      - toursl-network
+
+  route-engine:
+    build: ./route-engine
+    env_file:
+      - ./route-engine/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@route-db:5432/route_db
+    ports:
+      - "8002:8002"
+    depends_on:
+      route-db:
+        condition: service_healthy
+    networks:
+      - toursl-network
+
+  # ── Frontend ───────────────────────────────────────────────
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - planning-service
+      - recommendation-engine
+      - route-engine
+    networks:
+      - toursl-network
+
+volumes:
+  planning_db_data:
+  recommendation_db_data:
+  route_db_data:
+
+networks:
+  toursl-network:
+    driver: bridge
