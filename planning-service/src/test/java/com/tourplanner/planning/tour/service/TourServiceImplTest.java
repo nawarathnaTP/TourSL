@@ -179,6 +179,7 @@ class TourServiceImplTest {
         Tour tour2 = Tour.builder()
                 .tourId(UUID.randomUUID())
                 .user(testUser)
+                .tourType(TourType.TOURIST)
                 .startDay(LocalDate.of(2026, 8, 1))
                 .endDay(LocalDate.of(2026, 8, 5))
                 .createdAt(OffsetDateTime.now())

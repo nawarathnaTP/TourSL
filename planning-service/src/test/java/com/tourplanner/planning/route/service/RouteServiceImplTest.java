@@ -353,6 +353,8 @@ class RouteServiceImplTest {
     // Verifies that deleteRoutesForDay deletes all routes for the given day
     @Test
     void deleteRoutesForDay_deletesAllRoutes() {
+        Day day = Day.builder().dayId(dayId).dayNo(1).build();
+        when(dayRepository.findById(dayId)).thenReturn(Optional.of(day));
         when(routeRepository.findByDayId(dayId)).thenReturn(List.of(testRoute));
 
         routeService.deleteRoutesForDay(dayId);
@@ -363,6 +365,8 @@ class RouteServiceImplTest {
     // Verifies that deleteRoutesForDay with no routes does not throw
     @Test
     void deleteRoutesForDay_noRoutes_deletesEmptyList() {
+        Day day = Day.builder().dayId(dayId).dayNo(1).build();
+        when(dayRepository.findById(dayId)).thenReturn(Optional.of(day));
         when(routeRepository.findByDayId(dayId)).thenReturn(Collections.emptyList());
 
         routeService.deleteRoutesForDay(dayId);

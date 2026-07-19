@@ -1,9 +1,11 @@
 package com.tourplanner.planning.tour.repository;
 
+import com.tourplanner.planning.auth.entity.Role;
 import com.tourplanner.planning.auth.entity.User;
 import com.tourplanner.planning.auth.repository.UserRepository;
 import com.tourplanner.planning.tour.entity.Day;
 import com.tourplanner.planning.tour.entity.Tour;
+import com.tourplanner.planning.tour.entity.TourType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,22 +48,26 @@ class DayRepositoryTest {
                 .firstName("John")
                 .lastName("Doe")
                 .email("john@example.com")
+                .role(Role.TOURIST)
                 .build());
 
         User otherUser = userRepository.save(User.builder()
                 .firstName("Jane")
                 .lastName("Smith")
                 .email("jane@example.com")
+                .role(Role.TOURIST)
                 .build());
 
         savedTour = tourRepository.save(Tour.builder()
                 .user(savedUser)
+                .tourType(TourType.TOURIST)
                 .startDay(LocalDate.of(2026, 7, 1))
                 .endDay(LocalDate.of(2026, 7, 3))
                 .build());
 
         otherTour = tourRepository.save(Tour.builder()
                 .user(otherUser)
+                .tourType(TourType.TOURIST)
                 .startDay(LocalDate.of(2026, 8, 1))
                 .endDay(LocalDate.of(2026, 8, 3))
                 .build());

@@ -1,9 +1,11 @@
 package com.tourplanner.planning.tour.repository;
 
+import com.tourplanner.planning.auth.entity.Role;
 import com.tourplanner.planning.auth.entity.User;
 import com.tourplanner.planning.auth.repository.UserRepository;
 import com.tourplanner.planning.tour.entity.Day;
 import com.tourplanner.planning.tour.entity.Tour;
+import com.tourplanner.planning.tour.entity.TourType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,12 +47,14 @@ class TourRepositoryTest {
                 .firstName("John")
                 .lastName("Doe")
                 .email("john@example.com")
+                .role(Role.TOURIST)
                 .build());
 
         otherUser = userRepository.save(User.builder()
                 .firstName("Jane")
                 .lastName("Smith")
                 .email("jane@example.com")
+                .role(Role.TOURIST)
                 .build());
     }
 
@@ -59,6 +63,7 @@ class TourRepositoryTest {
     void save_validTour_persistsWithGeneratedId() {
         Tour tour = tourRepository.save(Tour.builder()
                 .user(savedUser)
+                .tourType(TourType.TOURIST)
                 .startDay(LocalDate.of(2026, 7, 1))
                 .endDay(LocalDate.of(2026, 7, 5))
                 .build());
@@ -74,6 +79,7 @@ class TourRepositoryTest {
     void save_setsCreatedAtAndUpdatedAt() {
         Tour tour = tourRepository.save(Tour.builder()
                 .user(savedUser)
+                .tourType(TourType.TOURIST)
                 .startDay(LocalDate.of(2026, 7, 1))
                 .endDay(LocalDate.of(2026, 7, 3))
                 .build());
@@ -123,6 +129,7 @@ class TourRepositoryTest {
     void findById_existingTour_returnsTour() {
         Tour saved = tourRepository.save(Tour.builder()
                 .user(savedUser)
+                .tourType(TourType.TOURIST)
                 .startDay(LocalDate.of(2026, 7, 1))
                 .endDay(LocalDate.of(2026, 7, 3))
                 .build());
@@ -146,11 +153,13 @@ class TourRepositoryTest {
     void findByUserId_returnsToursBelongingToUser() {
         tourRepository.save(Tour.builder()
                 .user(savedUser)
+                .tourType(TourType.TOURIST)
                 .startDay(LocalDate.of(2026, 7, 1))
                 .endDay(LocalDate.of(2026, 7, 3))
                 .build());
         tourRepository.save(Tour.builder()
                 .user(savedUser)
+                .tourType(TourType.TOURIST)
                 .startDay(LocalDate.of(2026, 8, 1))
                 .endDay(LocalDate.of(2026, 8, 5))
                 .build());
@@ -166,11 +175,13 @@ class TourRepositoryTest {
     void findByUserId_doesNotReturnOtherUsersTours() {
         tourRepository.save(Tour.builder()
                 .user(savedUser)
+                .tourType(TourType.TOURIST)
                 .startDay(LocalDate.of(2026, 7, 1))
                 .endDay(LocalDate.of(2026, 7, 3))
                 .build());
         tourRepository.save(Tour.builder()
                 .user(otherUser)
+                .tourType(TourType.TOURIST)
                 .startDay(LocalDate.of(2026, 8, 1))
                 .endDay(LocalDate.of(2026, 8, 5))
                 .build());
@@ -188,6 +199,7 @@ class TourRepositoryTest {
     void findByUserId_nonExistentUser_returnsEmptyList() {
         tourRepository.save(Tour.builder()
                 .user(savedUser)
+                .tourType(TourType.TOURIST)
                 .startDay(LocalDate.of(2026, 7, 1))
                 .endDay(LocalDate.of(2026, 7, 3))
                 .build());
@@ -202,6 +214,7 @@ class TourRepositoryTest {
     void delete_tour_cascadesDeleteToDays() {
         Tour tour = Tour.builder()
                 .user(savedUser)
+                .tourType(TourType.TOURIST)
                 .startDay(LocalDate.of(2026, 7, 1))
                 .endDay(LocalDate.of(2026, 7, 2))
                 .build();
@@ -228,11 +241,13 @@ class TourRepositoryTest {
     void delete_tour_doesNotAffectOtherUsersTours() {
         Tour johnsTour = tourRepository.save(Tour.builder()
                 .user(savedUser)
+                .tourType(TourType.TOURIST)
                 .startDay(LocalDate.of(2026, 7, 1))
                 .endDay(LocalDate.of(2026, 7, 3))
                 .build());
         Tour janesTour = tourRepository.save(Tour.builder()
                 .user(otherUser)
+                .tourType(TourType.TOURIST)
                 .startDay(LocalDate.of(2026, 8, 1))
                 .endDay(LocalDate.of(2026, 8, 5))
                 .build());
@@ -269,6 +284,7 @@ class TourRepositoryTest {
     void orphanRemoval_removingDayFromList_deletesDay() {
         Tour tour = Tour.builder()
                 .user(savedUser)
+                .tourType(TourType.TOURIST)
                 .startDay(LocalDate.of(2026, 7, 1))
                 .endDay(LocalDate.of(2026, 7, 2))
                 .build();
@@ -292,11 +308,13 @@ class TourRepositoryTest {
     void save_multipleTours_generatesUniqueIds() {
         Tour tour1 = tourRepository.save(Tour.builder()
                 .user(savedUser)
+                .tourType(TourType.TOURIST)
                 .startDay(LocalDate.of(2026, 7, 1))
                 .endDay(LocalDate.of(2026, 7, 3))
                 .build());
         Tour tour2 = tourRepository.save(Tour.builder()
                 .user(savedUser)
+                .tourType(TourType.TOURIST)
                 .startDay(LocalDate.of(2026, 8, 1))
                 .endDay(LocalDate.of(2026, 8, 5))
                 .build());

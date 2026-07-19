@@ -1,5 +1,6 @@
 package com.tourplanner.planning.stop.repository;
 
+import com.tourplanner.planning.auth.entity.Role;
 import com.tourplanner.planning.auth.entity.User;
 import com.tourplanner.planning.auth.repository.UserRepository;
 import com.tourplanner.planning.location.entity.Location;
@@ -8,6 +9,7 @@ import com.tourplanner.planning.stop.entity.Activity;
 import com.tourplanner.planning.stop.entity.Stop;
 import com.tourplanner.planning.tour.entity.Day;
 import com.tourplanner.planning.tour.entity.Tour;
+import com.tourplanner.planning.tour.entity.TourType;
 import com.tourplanner.planning.tour.repository.DayRepository;
 import com.tourplanner.planning.tour.repository.TourRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -63,10 +65,12 @@ class ActivityRepositoryTest {
                 .firstName("John")
                 .lastName("Doe")
                 .email("john@example.com")
+                .role(Role.TOURIST)
                 .build());
 
         Tour tour = tourRepository.save(Tour.builder()
                 .user(user)
+                .tourType(TourType.TOURIST)
                 .startDay(LocalDate.of(2026, 7, 1))
                 .endDay(LocalDate.of(2026, 7, 3))
                 .build());
