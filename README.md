@@ -449,10 +449,16 @@ TourSL is deployed on AWS using a containerized, serverless approach.
 | Compute | ECS Fargate | Runs 4 containerized services (no servers to manage) |
 | Load Balancing | Application Load Balancer | Path-based routing to services |
 | Database | RDS PostgreSQL 16 (db.t4g.micro) | Single instance, 3 databases |
-| Container Registry | ECR | Stores Docker images |
+| Container Registry | ECR | Stores Docker images per service |
 | CI/CD | GitHub Actions | Automated test → build → deploy pipeline |
 
+### How It Works
 
+1. **CI/CD Pipeline** — On every push to `main`, GitHub Actions builds all 4 Docker images in parallel (matrix strategy), pushes to ECR as `:latest`, then forces an ECS service redeploy
+2. **ALB Path-Based Routing** — A single Application Load Balancer routes requests by path: `/api/places/*` → recommendation-engine, `/api/route-engine/*` → route-engine, `/api/*` → planning-service, everything else → frontend
+3. **ECS Fargate Tasks** — Each service runs as a Fargate task (256 CPU / 512 MB) with public IPs in public subnets. No EC2 instances to manage
+4. **RDS PostgreSQL** — One `db.t4g.micro` instance hosts 3 isolated databases (`planning_db`, `recommendation_db`, `route_db`). Not publicly accessible — only reachable from the backend security group
+5. **Security Groups** — Layered network isolation: ALB accepts port 80 from the internet, backend containers only accept traffic from ALB, RDS only accepts connections from backend containers. Frontend has no network path to RDS at all
 
 ### Key Design Decisions
 
@@ -460,6 +466,7 @@ TourSL is deployed on AWS using a containerized, serverless approach.
 - **No NAT Gateway** — Services run in public subnets with public IPs; RDS is locked down via security groups (no public access). Saves ~$30/month
 - **Separate security groups** — Frontend container has no network path to RDS (defense in depth)
 - **Health check grace period (180s)** — Spring Boot takes ~135s to start on Fargate's 256 CPU; without this, ECS kills the task before it's ready
+- **SSL required for Python services** — `asyncpg` requires explicit `?ssl=require` in connection strings to reach RDS (JDBC connects without it)
 
 ## Getting Started
 
@@ -508,12 +515,7 @@ uvicorn app.main:app --port 8002
 
 ## Future Plans
 
-- [ ] Add HTTPS via AWS ACM certificate + custom domain
-- [ ] Migrate secrets to AWS Secrets Manager
-- [ ] Add dedicated health check endpoints to Python services
-- [ ] Implement real-time collaborative tour planning (WebSocket)
-- [ ] Add tour sharing and public tour discovery
-- [ ] Integrate weather forecasts for planned dates
-- [ ] Add cost estimation for entire tour (transport + activities + lodging)
-- [ ] Mobile-responsive PWA with offline itinerary access
-- [ ] AI-powered itinerary suggestions based on preferences and duration
+- [ ] **Route Engine → Optimization Engine** — Evolve from simple A→B routing into a trip optimizer: single-day TSP (optimal stop order via brute-force/nearest-neighbor) and full-trip optimization (cluster stops into days, then optimize within each day)
+- [ ] **Recommendation Engine → Personalized Recommendations** — Move beyond cached Google Places searches to actual recommendations based on user preferences, travel history, and interests
+- [ ] **Frontend to S3 + CloudFront** — Serve the React SPA from S3 with CloudFront CDN instead of running it as a Fargate container
+- [ ] **Private subnets + NAT Gateway** — Move services into private subnets with a NAT Gateway for outbound traffic, replacing the current public-subnet + security-group approach for stronger network isolation
