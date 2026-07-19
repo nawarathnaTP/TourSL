@@ -1,5 +1,6 @@
 package com.tourplanner.planning.tour.service;
 
+import com.tourplanner.planning.config.TourAccessValidator;
 import com.tourplanner.planning.location.entity.Location;
 import com.tourplanner.planning.stop.entity.Stop;
 import com.tourplanner.planning.tour.dto.DayRequest;
@@ -31,6 +32,9 @@ class DayServiceImplTest {
 
     @Mock
     private DayRepository dayRepository;
+
+    @Mock
+    private TourAccessValidator accessValidator;
 
     @InjectMocks
     private DayServiceImpl dayService;

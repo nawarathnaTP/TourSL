@@ -1,21 +1,20 @@
 package com.tourplanner.planning.tour.service;
 
 import com.tourplanner.planning.auth.entity.User;
-import com.tourplanner.planning.auth.repository.UserRepository;
+import com.tourplanner.planning.config.TourAccessValidator;
 import com.tourplanner.planning.tour.dto.TourRequest;
 import com.tourplanner.planning.tour.dto.TourResponse;
 import com.tourplanner.planning.tour.entity.Tour;
+import com.tourplanner.planning.tour.entity.TourType;
 import com.tourplanner.planning.tour.entity.Day;
+import com.tourplanner.planning.tour.repository.GuideTourPackageRepository;
 import com.tourplanner.planning.tour.repository.TourRepository;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -37,7 +36,10 @@ class TourServiceImplTest {
     private TourRepository tourRepository;
 
     @Mock
-    private UserRepository userRepository;
+    private GuideTourPackageRepository guideTourPackageRepository;
+
+    @Mock
+    private TourAccessValidator accessValidator;
 
     @InjectMocks
     private TourServiceImpl tourService;
@@ -62,22 +64,13 @@ class TourServiceImplTest {
         testTour = Tour.builder()
                 .tourId(tourId)
                 .user(testUser)
+                .tourType(TourType.TOURIST)
                 .startDay(LocalDate.of(2026, 7, 1))
                 .endDay(LocalDate.of(2026, 7, 3))
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
                 .days(new ArrayList<>())
                 .build();
-
-        // Set up SecurityContext for authenticated user
-        UsernamePasswordAuthenticationToken auth =
-                new UsernamePasswordAuthenticationToken("john@example.com", null, Collections.emptyList());
-        SecurityContextHolder.getContext().setAuthentication(auth);
-    }
-
-    @AfterEach
-    void tearDown() {
-        SecurityContextHolder.clearContext();
     }
 
     // Verifies that a tour is created with correct fields and the expected number of days
@@ -88,7 +81,7 @@ class TourServiceImplTest {
                 .endDay(LocalDate.of(2026, 7, 3))
                 .build();
 
-        when(userRepository.findByEmail("john@example.com")).thenReturn(Optional.of(testUser));
+        when(accessValidator.getAuthenticatedUser()).thenReturn(testUser);
         when(tourRepository.save(any(Tour.class))).thenAnswer(invocation -> {
             Tour tour = invocation.getArgument(0);
             tour.setTourId(tourId);
@@ -116,7 +109,7 @@ class TourServiceImplTest {
                 .endDay(LocalDate.of(2026, 7, 1))
                 .build();
 
-        when(userRepository.findByEmail("john@example.com")).thenReturn(Optional.of(testUser));
+        when(accessValidator.getAuthenticatedUser()).thenReturn(testUser);
         when(tourRepository.save(any(Tour.class))).thenAnswer(invocation -> {
             Tour tour = invocation.getArgument(0);
             tour.setTourId(tourId);
@@ -140,7 +133,8 @@ class TourServiceImplTest {
                 .endDay(LocalDate.of(2026, 7, 3))
                 .build();
 
-        when(userRepository.findByEmail("john@example.com")).thenReturn(Optional.empty());
+        when(accessValidator.getAuthenticatedUser())
+                .thenThrow(new RuntimeException("Authenticated user not found"));
 
         assertThatThrownBy(() -> tourService.createTour(request))
                 .isInstanceOf(RuntimeException.class)
@@ -192,7 +186,7 @@ class TourServiceImplTest {
                 .days(new ArrayList<>())
                 .build();
 
-        when(userRepository.findByEmail("john@example.com")).thenReturn(Optional.of(testUser));
+        when(accessValidator.getAuthenticatedUser()).thenReturn(testUser);
         when(tourRepository.findByUser_Id(userId)).thenReturn(List.of(testTour, tour2));
 
         List<TourResponse> responses = tourService.getToursByUserId(userId);
@@ -204,7 +198,7 @@ class TourServiceImplTest {
     // Verifies that an empty list is returned when the user has no tours
     @Test
     void getToursByUserId_noTours_returnsEmptyList() {
-        when(userRepository.findByEmail("john@example.com")).thenReturn(Optional.of(testUser));
+        when(accessValidator.getAuthenticatedUser()).thenReturn(testUser);
         when(tourRepository.findByUser_Id(userId)).thenReturn(Collections.emptyList());
 
         List<TourResponse> responses = tourService.getToursByUserId(userId);
@@ -306,7 +300,7 @@ class TourServiceImplTest {
                 .endDay(LocalDate.of(2026, 7, 5))
                 .build();
 
-        when(userRepository.findByEmail("john@example.com")).thenReturn(Optional.of(testUser));
+        when(accessValidator.getAuthenticatedUser()).thenReturn(testUser);
         when(tourRepository.save(any(Tour.class))).thenAnswer(invocation -> {
             Tour tour = invocation.getArgument(0);
             tour.setTourId(tourId);

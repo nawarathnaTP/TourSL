@@ -1,5 +1,6 @@
 package com.tourplanner.planning.route.service;
 
+import com.tourplanner.planning.config.TourAccessValidator;
 import com.tourplanner.planning.route.dto.RouteRequest;
 import com.tourplanner.planning.route.dto.RouteResponse;
 import com.tourplanner.planning.route.entity.Route;
@@ -9,6 +10,7 @@ import com.tourplanner.planning.route.repository.TransportOptionRepository;
 import com.tourplanner.planning.stop.entity.Stop;
 import com.tourplanner.planning.stop.repository.StopRepository;
 import com.tourplanner.planning.tour.entity.Day;
+import com.tourplanner.planning.tour.repository.DayRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,6 +41,12 @@ class RouteServiceImplTest {
 
     @Mock
     private TransportOptionRepository transportOptionRepository;
+
+    @Mock
+    private DayRepository dayRepository;
+
+    @Mock
+    private TourAccessValidator accessValidator;
 
     @InjectMocks
     private RouteServiceImpl routeService;

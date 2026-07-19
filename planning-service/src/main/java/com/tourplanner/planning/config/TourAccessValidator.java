@@ -57,8 +57,11 @@ public class TourAccessValidator {
     }
 
     public User getAuthenticatedUser() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        return userRepository.findByEmail(email)
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getName() == null) {
+            throw new RuntimeException("No authenticated user in security context");
+        }
+        return userRepository.findByEmail(auth.getName())
                 .orElseThrow(() -> new RuntimeException("Authenticated user not found"));
     }
 }

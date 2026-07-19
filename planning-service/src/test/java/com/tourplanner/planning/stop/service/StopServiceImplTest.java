@@ -1,5 +1,6 @@
 package com.tourplanner.planning.stop.service;
 
+import com.tourplanner.planning.config.TourAccessValidator;
 import com.tourplanner.planning.location.dto.LocationRequest;
 import com.tourplanner.planning.location.entity.Location;
 import com.tourplanner.planning.location.service.LocationService;
@@ -46,6 +47,9 @@ class StopServiceImplTest {
 
     @Mock
     private RouteRepository routeRepository;
+
+    @Mock
+    private TourAccessValidator accessValidator;
 
     @InjectMocks
     private StopServiceImpl stopService;
