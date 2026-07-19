@@ -195,6 +195,19 @@ Managed by Flyway with 8 versioned migrations. Key tables:
 - Cascade deletes: Tour → Days → Stops → Activities
 - Tour ownership enforced at service layer via `TourAccessValidator`
 
+### Design Decisions
+
+| Decision | Approach |
+|----------|----------|
+| **Race Conditions in Bookings** | Optimistic locking via JPA `@Version` — concurrent slot decrements trigger `OptimisticLockException` instead of overbooking. No pessimistic locks needed. |
+| **Payment Timer** | 15-minute payment window with `@Scheduled` expiry job. Slots are reserved immediately but auto-released if unpaid — prevents indefinite slot deadlocks. |
+| **Centralized Access Control** | `TourAccessValidator` enforces ownership + modifiability in one place. All write operations resolve to the parent tour and pass through `verifyOwnershipAndModifiable()`. Guide tours lock once published. |
+| **Route Invalidation on Reorder** | Captures old consecutive stop pairs, compares after mutation, deletes only invalidated routes — selective cleanup instead of brute-force deletion. |
+| **Two-Phase Reorder** | Unique constraint on `(day_id, stop_order)` prevents naive swaps. Solution: assign negative intermediary values → flush → assign correct positives → flush. Atomic within one transaction. |
+| **Tour Date Overlap Prevention** | JPQL interval overlap query (`A.start ≤ B.end AND A.end ≥ B.start`) catches all overlap cases in a single check. |
+| **Package State Machine** | `DRAFT → PUBLISHED → FILLED` with strict transition rules. Editing locked after publish, auto-transitions on cancellation/slot changes. |
+| **Duplicate Booking Prevention** | Repository-level `existsBy` check prevents double-bookings from retries/rapid clicks, while still allowing re-booking after cancellation. |
+
 ---
 
 ## Recommendation Engine
@@ -260,17 +273,22 @@ recommendation-engine/
 }
 ```
 
-### Database Schema
+### Design Decision: Hash-Based Location Caching (3-Table Normalized Schema)
 
-Single table for caching — stores search queries and their results to avoid redundant Google API calls:
+Every search request is cached to avoid redundant Google Places API calls (billed per request). The DB uses 3 tables:
 
-```
-locations        (id, google_place_id, name, address, lat, lng, rating, types, photo_url)
-search_queries   (id, query_hash, search_type, query_text, lat, lng, radius, max_results, created_at)
-query_locations  (query_id → search_queries, location_id → locations)
-```
+- **`search_queries`** — stores the SHA256 `query_hash` of search params + `expires_at` (24h TTL)
+- **`locations`** — stores place data (name, coordinates, rating, types, photo). Keyed by `google_place_id` (unique)
+- **`query_locations`** — junction table linking queries to locations with a `rank` column (preserves result order)
 
-Cache lookup is hash-based: identical search parameters produce the same hash → instant cache hit.
+**Cache flow:**
+
+1. **Hash** — Serialize search params (query text, lat/lng, radius, types, max_results), sort, SHA256 hash
+2. **Lookup** — Find matching `query_hash` in `search_queries` where `expires_at > now`
+3. **Hit** — Join through `query_locations` → `locations`, return results in ranked order
+4. **Miss** — Call Google Places API, **upsert** locations by `google_place_id` (updates stale data), insert new `search_queries` row with 24h expiry, link via `query_locations`
+
+The normalized schema means locations are shared across queries — if "temples in Kandy" and "things to do in Kandy" both return Sigiriya, only one location record exists, always kept fresh on each cache write.
 
 ---
 
@@ -341,14 +359,21 @@ route-engine/
 
 If `travel_modes` is omitted, defaults to `["DRIVE", "TWO_WHEELER", "WALK"]`.
 
-### Database Schema
+### Design Decision: Coordinate-Rounded Route Caching with Mode-Specific TTLs
 
-```
-cached_routes (id, origin_lat, origin_lng, dest_lat, dest_lng, travel_mode,
-               distance_meters, duration_seconds, summary, polyline, created_at)
-```
+Route API calls are expensive and routes between similar points rarely differ. The caching strategy accounts for this:
 
-Cache key is the origin/destination coordinate pair + travel mode. Coordinates are stored at 3 decimal places of precision for cache matching.
+1. **Coordinate rounding** — Origin and destination lat/lng are rounded to 3 decimal places (~111m precision) before lookup. Two requests 50m apart hit the same cache entry instead of triggering separate API calls
+2. **Cache check** — Query `cached_routes` for matching rounded coordinates + travel mode where `expires_at > now`
+3. **All-or-nothing** — Cache only returns a hit if results exist for **all** requested travel modes. Partial cache = full refetch, ensuring consistent data
+4. **Mode-specific TTLs** — Different route types change at different rates:
+
+| Mode | TTL | Rationale |
+|------|-----|-----------|
+| WALK | 30 days | Pedestrian paths rarely change |
+| BICYCLE | 14 days | Bike routes are mostly stable |
+| DRIVE / TWO_WHEELER | 7 days | Road conditions change moderately |
+| TRANSIT | 24 hours | Bus/train schedules change frequently |
 
 ---
 
@@ -435,19 +460,6 @@ TourSL is deployed on AWS using a containerized, serverless approach.
 - **No NAT Gateway** — Services run in public subnets with public IPs; RDS is locked down via security groups (no public access). Saves ~$30/month
 - **Separate security groups** — Frontend container has no network path to RDS (defense in depth)
 - **Health check grace period (180s)** — Spring Boot takes ~135s to start on Fargate's 256 CPU; without this, ECS kills the task before it's ready
-
-### Cost
-
-| Resource | Monthly Cost |
-|----------|-------------|
-| RDS (db.t4g.micro + 20GB) | ~$13–15 |
-| ECS Fargate (4 × 256 CPU / 512 MB) | ~$10–20 |
-| Application Load Balancer | ~$16–20 |
-| **Total** | **~$40–55** |
-
-For full infrastructure documentation including security groups, environment variables, and lessons learned, see [Deployment.md](./Deployment.md).
-
----
 
 ## Getting Started
 
