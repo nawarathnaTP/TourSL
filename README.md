@@ -21,35 +21,7 @@ TourSL is a full-stack tour planning platform built for Sri Lanka. It allows tou
 
 TourSL follows a microservices architecture with four independently deployable services communicating through an Application Load Balancer.
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                        Client (Browser)                               │
-└──────────────────────────────┬───────────────────────────────────────┘
-                               │
-                               ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│              Application Load Balancer (path-based routing)           │
-├──────────────┬───────────────┬───────────────────┬───────────────────┤
-│     /        │   /api/*      │  /api/places/*    │ /api/route-engine/*│
-└──────┬───────┴───────┬───────┴─────────┬─────────┴─────────┬─────────┘
-       │               │                 │                   │
-       ▼               ▼                 ▼                   ▼
-┌─────────────┐ ┌─────────────┐  ┌─────────────────┐ ┌─────────────┐
-│  Frontend   │ │  Planning   │  │ Recommendation  │ │   Route     │
-│  (React)    │ │  Service    │  │    Engine       │ │   Engine    │
-│  Port 80    │ │  Port 8001  │  │   Port 8000     │ │  Port 8002  │
-└─────────────┘ └──────┬──────┘  └────────┬────────┘ └──────┬──────┘
-                       │                  │                  │
-                       ▼                  ▼                  ▼
-               ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-               │ planning_db │    │recommend_db │    │  route_db   │
-               └─────────────┘    └─────────────┘    └─────────────┘
-                       └──────────────────┴──────────────────┘
-                                          │
-                                ┌─────────────────┐
-                                │ PostgreSQL (RDS) │
-                                └─────────────────┘
-```
+![alt text](architecture.png)
 
 ### Service Responsibilities
 
@@ -215,20 +187,7 @@ planning-service/
 
 Managed by Flyway with 8 versioned migrations. Key tables:
 
-```
-users            ─┬─ accounts (LOCAL / GOOGLE auth providers)
-                  ├─ tourist (profile: language, nationality)
-                  └─ guide (profile: bio, specializations, license, rating)
-
-tour             ─── days ─── stops ─── activities
-  │                            │
-  │                            └─── route (start_stop ↔ end_stop + transport_option)
-  │
-  └─── guide_tour_package ─── bookings
-
-locations        (shared — referenced by stops, find-or-create pattern)
-transport_options (bus, train, car, etc.)
-```
+![alt text](planning_service_ER.png)
 
 **Key constraints:**
 - Unique stop order per day (`uq_stops_day_order`)
@@ -456,6 +415,8 @@ services:
 
 TourSL is deployed on AWS using a containerized, serverless approach.
 
+![alt text](deployment_diagram.png)
+
 ### Infrastructure
 
 | Component | Service | Purpose |
@@ -466,23 +427,7 @@ TourSL is deployed on AWS using a containerized, serverless approach.
 | Container Registry | ECR | Stores Docker images |
 | CI/CD | GitHub Actions | Automated test → build → deploy pipeline |
 
-### Deployment Flow
 
-```
-Push to main
-     │
-     ▼
-┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│  Run JUnit      │────▶│  Build Docker    │────▶│  Push to ECR    │
-│  Tests          │     │  Images (×4)     │     │  (:latest)      │
-└─────────────────┘     └──────────────────┘     └────────┬────────┘
-                                                          │
-                                                          ▼
-                                                 ┌─────────────────┐
-                                                 │  Force ECS      │
-                                                 │  Redeploy       │
-                                                 └─────────────────┘
-```
 
 ### Key Design Decisions
 
