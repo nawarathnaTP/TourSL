@@ -1,0 +1,70 @@
+name: Build and Deploy to ECS
+
+on:
+  push:
+    branches: [main]
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_REGISTRY: 949678235192.dkr.ecr.ap-south-1.amazonaws.com
+  ECS_CLUSTER: toursl-cluster
+
+jobs:
+  test-planning-service:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Run JUnit tests
+        working-directory: ./planning-service
+        run: ./mvnw test
+
+  deploy:
+    needs: test-planning-service
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: planning-service
+            path: planning-service
+          - service: recommendation-engine
+            path: recommendation-engine
+          - service: route-engine
+            path: route-engine
+          - service: frontend
+            path: frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image
+        run: |
+          docker build -t ${{ env.ECR_REGISTRY }}/${{ matrix.service }}:latest ./${{ matrix.path }}
+          docker push ${{ env.ECR_REGISTRY }}/${{ matrix.service }}:latest
+
+      - name: Force new ECS deployment
+        run: |
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ matrix.service }} \
+            --force-new-deployment \
+            --region ${{ env.AWS_REGION }}
