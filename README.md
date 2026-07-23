@@ -19,7 +19,7 @@ TourSL is a full-stack tour planning platform built for Sri Lanka. It allows tou
 
 ## Architecture Overview
 
-TourSL follows a microservices architecture with four independently deployable services communicating through an Application Load Balancer.
+TourSL follows a microservices architecture with a React SPA served via CloudFront/S3 and three backend services communicating through an Application Load Balancer.
 
 ![alt text](archi.png)
 
@@ -432,7 +432,7 @@ services:
 
 ## Deployment
 
-TourSL is deployed on AWS using a containerized, serverless approach.
+TourSL is deployed on AWS using a containerized, serverless approach with CloudFront as the entry point.
 
 ![alt text](deployment_diagram_2.png)
 
@@ -440,25 +440,31 @@ TourSL is deployed on AWS using a containerized, serverless approach.
 
 | Component | Service | Purpose |
 |-----------|---------|---------|
-| Compute | ECS Fargate | Runs 4 containerized services (no servers to manage) |
-| Load Balancing | Application Load Balancer | Path-based routing to services |
-| Database | RDS PostgreSQL 16 (db.t4g.micro) | Single instance, 3 databases |
+| CDN | Amazon CloudFront | Entry point — serves frontend from S3 and proxies API requests to ALB |
+| Frontend Hosting | S3 Bucket | Stores the React SPA static build |
+| DNS | Amazon Route 53 | Domain resolution, points to CloudFront |
+| Compute | ECS Fargate | Runs 3 backend services in a private subnet (no servers to manage) |
+| Load Balancing | Application Load Balancer | Path-based routing to backend services |
+| Networking | NAT Gateway + Internet Gateway | Outbound internet access for private subnet (e.g. Google Maps API calls) |
+| Database | RDS PostgreSQL 16 (db.t4g.micro) | Single instance, 3 databases, in private subnet |
 | Container Registry | ECR | Stores Docker images per service |
 | CI/CD | GitHub Actions | Automated test → build → deploy pipeline |
 
 ### How It Works
 
-1. **CI/CD Pipeline** — On every push to `main`, GitHub Actions builds all 4 Docker images in parallel (matrix strategy), pushes to ECR as `:latest`, then forces an ECS service redeploy
-2. **ALB Path-Based Routing** — A single Application Load Balancer routes requests by path: `/api/places/*` → recommendation-engine, `/api/route-engine/*` → route-engine, `/api/*` → planning-service, everything else → frontend
-3. **ECS Fargate Tasks** — Each service runs as a Fargate task (256 CPU / 512 MB) with public IPs in public subnets. No EC2 instances to manage
-4. **RDS PostgreSQL** — One `db.t4g.micro` instance hosts 3 isolated databases (`planning_db`, `recommendation_db`, `route_db`). Not publicly accessible — only reachable from the backend security group
-5. **Security Groups** — Layered network isolation: ALB accepts port 80 from the internet, backend containers only accept traffic from ALB, RDS only accepts connections from backend containers. Frontend has no network path to RDS at all
+1. **CI/CD Pipeline** — On every push to `main`, GitHub Actions builds the 3 backend Docker images in parallel (matrix strategy), pushes to ECR as `:latest`, then forces an ECS service redeploy. The frontend is built and deployed to S3, with a CloudFront cache invalidation
+2. **CloudFront + Route 53** — Route 53 resolves the domain to CloudFront. CloudFront serves the React SPA from S3 (static assets) and forwards `/api/*` requests to the ALB
+3. **ALB Path-Based Routing** — The Application Load Balancer routes API requests by path: `/api/places/*` → recommendation-engine, `/api/route-engine/*` → route-engine, `/api/*` → planning-service
+4. **Private Subnet + NAT Gateway** — Backend services and RDS run in a private subnet with no public IPs. A NAT Gateway in a public subnet provides outbound internet access (for Google Maps API calls, ECR image pulls, etc.). An Internet Gateway connects the VPC to the internet
+5. **ECS Fargate Tasks** — Each backend service runs as a Fargate task (256 CPU / 512 MB) in the private subnet within the TourSL ECS cluster
+6. **RDS PostgreSQL** — One `db.t4g.micro` instance hosts 3 isolated databases (`planning_db`, `recommendation_db`, `route_db`). Only reachable from backend services in the private subnet
+7. **Security Groups** — Layered network isolation: ALB accepts traffic from CloudFront, backend containers only accept traffic from ALB, RDS only accepts connections from backend containers
 
 ### Key Design Decisions
 
+- **Frontend on S3 + CloudFront** — The React SPA is served as static files from S3 via CloudFront CDN, eliminating the need for a Fargate container just to serve static assets. Faster globally and cheaper than running Nginx in a container
+- **Private subnets + NAT Gateway** — Backend services and RDS are isolated in a private subnet with no public IPs. Outbound internet access is provided through a NAT Gateway, providing stronger network isolation than the previous public-subnet + security-group approach
 - **One RDS instance, three databases** — Cost-effective for a portfolio project; each service has credentials only to its own database
-- **No NAT Gateway** — Services run in public subnets with public IPs; RDS is locked down via security groups (no public access). Saves ~$30/month
-- **Separate security groups** — Frontend container has no network path to RDS (defense in depth)
 - **Health check grace period (180s)** — Spring Boot takes ~135s to start on Fargate's 256 CPU; without this, ECS kills the task before it's ready
 - **SSL required for Python services** — `asyncpg` requires explicit `?ssl=require` in connection strings to reach RDS (JDBC connects without it)
 
@@ -511,5 +517,5 @@ uvicorn app.main:app --port 8002
 
 - [ ] **Route Engine → Optimization Engine** — Evolve from simple A→B routing into a trip optimizer: single-day TSP (optimal stop order via brute-force/nearest-neighbor) and full-trip optimization (cluster stops into days, then optimize within each day)
 - [ ] **Recommendation Engine → Personalized Recommendations** — Move beyond cached Google Places searches to actual recommendations based on user preferences, travel history, and interests
-- [ ] **Frontend to S3 + CloudFront** — Serve the React SPA from S3 with CloudFront CDN instead of running it as a Fargate container
-- [ ] **Private subnets + NAT Gateway** — Move services into private subnets with a NAT Gateway for outbound traffic, replacing the current public-subnet + security-group approach for stronger network isolation
+- [x] **Frontend to S3 + CloudFront** — React SPA is now served from S3 via CloudFront CDN instead of running as a Fargate container
+- [x] **Private subnets + NAT Gateway** — Backend services and RDS now run in a private subnet with a NAT Gateway for outbound traffic, replacing the previous public-subnet approach
