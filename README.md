@@ -21,7 +21,7 @@ TourSL is a full-stack tour planning platform built for Sri Lanka. It allows tou
 
 TourSL follows a microservices architecture with four independently deployable services communicating through an Application Load Balancer.
 
-![alt text](architecture.png)
+![alt text](archi.png)
 
 ### Service Responsibilities
 
@@ -36,11 +36,11 @@ TourSL follows a microservices architecture with four independently deployable s
 
 | Layer | Technologies |
 |-------|-------------|
-| Frontend | React 19, TypeScript, Vite, Tailwind CSS, React Router |
+| Frontend | React 19, TypeScript, Vite, Tailwind CSS|
 | Backend (Core) | Java 17, Spring Boot 4.1, Spring Security, JPA/Hibernate, Flyway |
 | Backend (Python) | Python 3.11, FastAPI, SQLAlchemy (async), asyncpg, Alembic |
 | Database | PostgreSQL 16 |
-| Infrastructure | AWS ECS Fargate, ALB, RDS, ECR, GitHub Actions |
+| Infrastructure | AWS, GitHub Actions |
 | Auth | JWT (access + refresh tokens), Google OAuth 2.0 |
 | External APIs | Google Places API (New), Google Routes API |
 
@@ -185,15 +185,9 @@ planning-service/
 
 ### Database Schema
 
-Managed by Flyway with 8 versioned migrations. Key tables:
+Managed by Flyway with 8 versioned migrations.
 
 ![alt text](planning_service_ER.png)
-
-**Key constraints:**
-- Unique stop order per day (`uq_stops_day_order`)
-- Unique route per start-end stop pair (`uq_route_start_end`)
-- Cascade deletes: Tour → Days → Stops → Activities
-- Tour ownership enforced at service layer via `TourAccessValidator`
 
 ### Design Decisions
 
@@ -273,7 +267,7 @@ recommendation-engine/
 }
 ```
 
-### Design Decision: Hash-Based Location Caching (3-Table Normalized Schema)
+### Design Decision: Hash-Based Location Caching 
 
 Every search request is cached to avoid redundant Google Places API calls (billed per request). The DB uses 3 tables:
 
@@ -440,7 +434,7 @@ services:
 
 TourSL is deployed on AWS using a containerized, serverless approach.
 
-![alt text](deployment_diagram.png)
+![alt text](deployment_diagram_2.png)
 
 ### Infrastructure
 
