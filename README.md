@@ -414,6 +414,10 @@ cd planning-service
 - **Repository tests:** Constraint violations, cascade behavior, query correctness, data isolation between users
 - **Security tests:** JWT token lifecycle, authentication filter, user details loading
 
+### API Testing
+
+All API endpoints across the three backend services were manually tested using **Apidog** during development — verifying request/response formats, authentication flows, and error handling.
+
 ### CI Pipeline
 
 Tests run automatically on every push to `main` via GitHub Actions with a PostgreSQL service container:
