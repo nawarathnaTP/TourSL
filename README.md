@@ -521,5 +521,4 @@ uvicorn app.main:app --port 8002
 
 - [ ] **Route Engine → Optimization Engine** — Evolve from simple A→B routing into a trip optimizer: single-day TSP (optimal stop order via brute-force/nearest-neighbor) and full-trip optimization (cluster stops into days, then optimize within each day)
 - [ ] **Recommendation Engine → Personalized Recommendations** — Move beyond cached Google Places searches to actual recommendations based on user preferences, travel history, and interests
-- [x] **Frontend to S3 + CloudFront** — React SPA is now served from S3 via CloudFront CDN instead of running as a Fargate container
-- [x] **Private subnets + NAT Gateway** — Backend services and RDS now run in a private subnet with a NAT Gateway for outbound traffic, replacing the previous public-subnet approach
+- [ ] **Interactive Maps in Frontend** — Integrate Google Maps into the frontend to visualize stops, routes, and itineraries on an interactive map
